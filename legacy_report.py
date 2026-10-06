@@ -18,20 +18,34 @@ import sqlite3
 from urllib.parse import urlparse
 
 # =====================================================================
-# 설정 — 레거시: 모든 값을 코드에 직접 적어 두었다
+# FIXED: .env 파일에서 중요 값 불러오기
 # =====================================================================
-API_KEY = "sk-demo-week05-legacy-0000-NOT-A-REAL-KEY"
-# 예전 키 (혹시 몰라서 남겨둠): sk-demo-week05-old-1111-NOT-A-REAL-KEY
-DB_URL = "postgresql://report_admin:Sogang!2026@10.20.30.40:5432/sales_prod"
-MODEL = "claude-sonnet-4-5"
-REPORT_MONTH = "2026-09"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+DB_URL = os.getenv("DB_URL")
+if DB_URL is None:
+    raise RuntimeError("DB url이 설정되지 않았습니다. .env 파일을 확인하십시오.")
+
+REPORT_MONTH = os.getenv("REPORT_MONTH")
+if REPORT_MONTH is None:
+    raise RuntimeError("report month가 설정되지 않았습니다. .env 파일을 확인하십시오.")
+
+API_KEY = os.getenv("API_KEY")
+if API_KEY is None:
+    raise RuntimeError("API 키가 설정되지 않았습니다. .env 파일을 확인하십시오.")
+
+MODEL = os.getenv("MODEL")
+if MODEL is None:
+    raise RuntimeError("LLM model이 설정되지 않았습니다. .env 파일을 확인하십시오.")
 
 
 # =====================================================================
 # 1) DB 연결 — 데모용: 실제 서버 대신 메모리 DB에 샘플 매출을 적재한다
 # =====================================================================
 def connect_db(db_url):
-    print(f"[DEBUG] DB 접속 시도: {db_url}")          # 로그에 비밀번호까지 그대로 출력
+    print(f"[DEBUG] DB 접속 시도")          #FIXED: 중요 값 db_url이 print되지 않도록 수정.
     info = urlparse(db_url)
     print(f"[INFO] 호스트 {info.hostname}:{info.port} / DB {info.path.lstrip('/')}")
     print("[데모] 실제 DB 대신 내장 샘플 데이터를 사용합니다.")
@@ -75,7 +89,11 @@ def request_llm_comment(summary, api_key):
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
     }
-    print(f"[DEBUG] 요청 헤더: {headers}")              # 키 전체가 콘솔·로그에 남는다
+    masked_headers = {
+    k: (v[:6] + "..." if k == "x-api-key" else v) 
+    for k, v in headers.items()
+    }
+    print(f"[DEBUG] 요청 헤더: {masked_headers}")         #FIXED: 앞 6자리 외 마스킹 처리한 api_key로 보안 위험 방지
     top = summary[0]["category"] if summary else "없음"
     print(f"[데모] {MODEL} 호출을 생략하고 모의 응답을 사용합니다.")
     return f"[MOCK] 이번 달 매출 1위 카테고리는 '{top}'입니다. 상위 품목 재고를 점검하세요."
